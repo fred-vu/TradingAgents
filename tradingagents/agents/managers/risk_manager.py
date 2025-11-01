@@ -9,10 +9,10 @@ def create_risk_manager(llm, memory):
 
         history = state["risk_debate_state"]["history"]
         risk_debate_state = state["risk_debate_state"]
-        market_research_report = state["market_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["news_report"]
-        sentiment_report = state["sentiment_report"]
+        market_research_report = state.get("market_report", "")
+        news_report = state.get("news_report", "")
+        fundamentals_report = state.get("fundamentals_report", "")
+        sentiment_report = state.get("sentiment_report", "")
         trader_plan = state["investment_plan"]
 
         curr_situation = f"{market_research_report}\n\n{sentiment_report}\n\n{news_report}\n\n{fundamentals_report}"
@@ -27,8 +27,9 @@ def create_risk_manager(llm, memory):
 Guidelines for Decision-Making:
 1. **Summarize Key Arguments**: Extract the strongest points from each analyst, focusing on relevance to the context.
 2. **Provide Rationale**: Support your recommendation with direct quotes and counterarguments from the debate.
-3. **Refine the Trader's Plan**: Start with the trader's original plan, **{trader_plan}**, and adjust it based on the analysts' insights.
-4. **Learn from Past Mistakes**: Use lessons from **{past_memory_str}** to address prior misjudgments and improve the decision you are making now to make sure you don't make a wrong BUY/SELL/HOLD call that loses money.
+3. **Evaluate Fundamentals Explicitly**: Use the fundamentals report to judge valuation, earnings quality, liquidity ratios, and debt exposure. Escalate risk if fundamentals contradict bullish narratives.
+4. **Refine the Trader's Plan**: Start with the trader's original plan, **{trader_plan}**, and adjust it based on the analysts' insights.
+5. **Learn from Past Mistakes**: Use lessons from **{past_memory_str}** to address prior misjudgments and improve the decision you are making now to make sure you don't make a wrong BUY/SELL/HOLD call that loses money.
 
 Deliverables:
 - A clear and actionable recommendation: Buy, Sell, or Hold.
@@ -38,6 +39,20 @@ Deliverables:
 
 **Analysts Debate History:**  
 {history}
+
+---
+
+**Market Research Report:**  
+{market_research_report}
+
+**Sentiment Report:**  
+{sentiment_report}
+
+**News Report:**  
+{news_report}
+
+**Fundamentals Report:**  
+{fundamentals_report}
 
 ---
 
