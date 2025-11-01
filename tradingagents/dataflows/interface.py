@@ -1,10 +1,45 @@
-from typing import Annotated
 import logging
+import time
+from typing import Annotated
+
+logger = logging.getLogger("tradingagents.dataflows")
 
 # Import from vendor-specific modules
 from .local import get_YFin_data, get_finnhub_news, get_finnhub_company_insider_sentiment, get_finnhub_company_insider_transactions, get_simfin_balance_sheet, get_simfin_cashflow, get_simfin_income_statements, get_reddit_global_news, get_reddit_company_news
-from .y_finance import get_YFin_data_online, get_stock_stats_indicators_window, get_balance_sheet as get_yfinance_balance_sheet, get_cashflow as get_yfinance_cashflow, get_income_statement as get_yfinance_income_statement, get_insider_transactions as get_yfinance_insider_transactions
-from .google import get_google_news
+
+try:
+    from .y_finance import (
+        get_YFin_data_online,
+        get_stock_stats_indicators_window,
+        get_balance_sheet as get_yfinance_balance_sheet,
+        get_cashflow as get_yfinance_cashflow,
+        get_income_statement as get_yfinance_income_statement,
+        get_insider_transactions as get_yfinance_insider_transactions,
+    )
+    YFINANCE_AVAILABLE = True
+except ModuleNotFoundError:
+    logger.warning("yfinance not installed; yfinance vendor functionality disabled")
+    YFINANCE_AVAILABLE = False
+
+    def _missing(*args, **kwargs):
+        raise ModuleNotFoundError("yfinance is required for this vendor but is not installed.")
+
+    get_YFin_data_online = _missing
+    get_stock_stats_indicators_window = _missing
+    get_yfinance_balance_sheet = _missing
+    get_yfinance_cashflow = _missing
+    get_yfinance_income_statement = _missing
+    get_yfinance_insider_transactions = _missing
+
+try:
+    from .google import get_google_news
+    GOOGLE_NEWS_AVAILABLE = True
+except ModuleNotFoundError:
+    logger.warning("Google News dependencies missing; google vendor functionality disabled")
+    GOOGLE_NEWS_AVAILABLE = False
+
+    def get_google_news(*args, **kwargs):
+        raise ModuleNotFoundError("Google News dependencies (tenacity, bs4, requests) are required")
 from .openai import get_stock_news_openai, get_global_news_openai, get_fundamentals_openai
 from .alpha_vantage import (
     get_stock as get_alpha_vantage_stock,
@@ -17,12 +52,25 @@ from .alpha_vantage import (
     get_news as get_alpha_vantage_news
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
+from .finnhub_api import (
+    get_finnhub_company_news,
+    get_finnhub_basic_financials,
+    get_finnhub_income_statement,
+    get_finnhub_balance_sheet,
+    get_finnhub_cashflow,
+    IS_AVAILABLE as FINNHUB_AVAILABLE,
+)
+from .newsapi_client import (
+    get_newsapi_company_news,
+    get_newsapi_global_news,
+    IS_AVAILABLE as NEWSAPI_AVAILABLE,
+)
 
 # Configuration and routing logic
 from .config import get_config
+from .cache import get_cache, ResponseCache
 
 # Tools organized by category
-logger = logging.getLogger("tradingagents.dataflows")
 TOOLS_CATEGORIES = {
     "core_stock_apis": {
         "description": "OHLCV stock price data",
@@ -56,12 +104,61 @@ TOOLS_CATEGORIES = {
     }
 }
 
+_vendor_failure_counts: dict[str, int] = {}
+_vendor_circuit_breaker: dict[str, float] = {}
+
+
+def _reset_vendor_state():
+    _vendor_failure_counts.clear()
+    _vendor_circuit_breaker.clear()
+
+
+def reset_vendor_state_for_tests():
+    _reset_vendor_state()
+
+
+def _is_vendor_available(vendor: str) -> bool:
+    return VENDOR_AVAILABILITY.get(vendor, True)
+
+
+def _register_vendor_failure(vendor: str, config) -> None:
+    threshold = int(config.get("vendor_circuit_breaker_threshold", 3) or 3)
+    cooldown = int(config.get("vendor_circuit_breaker_cooldown", 300) or 300)
+    count = _vendor_failure_counts.get(vendor, 0) + 1
+    _vendor_failure_counts[vendor] = count
+    if count >= threshold:
+        unblock_time = time.time() + cooldown
+        _vendor_circuit_breaker[vendor] = unblock_time
+        _vendor_failure_counts[vendor] = 0
+        logger.warning(
+            "Circuit breaker tripped for vendor '%s' after %d consecutive failures; skipping for %ss",
+            vendor,
+            threshold,
+            cooldown,
+        )
+
+
+def _clear_vendor_failure(vendor: str) -> None:
+    _vendor_failure_counts.pop(vendor, None)
+    _vendor_circuit_breaker.pop(vendor, None)
+
 VENDOR_LIST = [
     "local",
     "yfinance",
     "openai",
-    "google"
+    "google",
+    "finnhub",
+    "newsapi",
 ]
+
+VENDOR_AVAILABILITY = {
+    "local": True,
+    "yfinance": YFINANCE_AVAILABLE,
+    "openai": True,
+    "google": GOOGLE_NEWS_AVAILABLE,
+    "finnhub": FINNHUB_AVAILABLE,
+    "newsapi": NEWSAPI_AVAILABLE,
+}
 
 # Mapping of methods to their vendor-specific implementations
 VENDOR_METHODS = {
@@ -81,31 +178,38 @@ VENDOR_METHODS = {
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "openai": get_fundamentals_openai,
+        "finnhub": get_finnhub_basic_financials,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
         "local": get_simfin_balance_sheet,
+        "finnhub": get_finnhub_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
         "local": get_simfin_cashflow,
+        "finnhub": get_finnhub_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
         "local": get_simfin_income_statements,
+        "finnhub": get_finnhub_income_statement,
     },
     # news_data
     "get_news": {
         "alpha_vantage": get_alpha_vantage_news,
         "openai": get_stock_news_openai,
         "google": get_google_news,
+        "finnhub": get_finnhub_company_news,
+        "newsapi": get_newsapi_company_news,
         "local": [get_finnhub_news, get_reddit_company_news, get_google_news],
     },
     "get_global_news": {
         "openai": get_global_news_openai,
+        "newsapi": get_newsapi_global_news,
         "local": get_reddit_global_news
     },
     "get_insider_sentiment": {
@@ -142,6 +246,19 @@ def get_vendor(category: str, method: str = None) -> str:
 
 def route_to_vendor(method: str, *args, **kwargs):
     """Route method calls to appropriate vendor implementation with fallback support."""
+    config = get_config()
+    cache = get_cache()
+    ttl_map = config.get("cache_ttl", {})
+    ttl_seconds = ttl_map.get(method, 0)
+    cache_key = None
+
+    if cache and ttl_seconds:
+        cache_key = ResponseCache.make_key(method, args, kwargs)
+        cached_response = cache.get(method, cache_key, ttl_seconds)
+        if cached_response is not None:
+            logger.debug("Cache hit for method '%s'", method)
+            return cached_response
+
     category = get_category_for_method(method)
     vendor_config = get_vendor(category, method)
 
@@ -159,6 +276,15 @@ def route_to_vendor(method: str, *args, **kwargs):
     for vendor in all_available_vendors:
         if vendor not in fallback_vendors:
             fallback_vendors.append(vendor)
+
+    priority_spec = config.get("vendor_priority_order") or ""
+    if priority_spec:
+        priority_list = [v.strip() for v in priority_spec.split(",") if v.strip()]
+        if priority_list:
+            fallback_vendors = sorted(
+                fallback_vendors,
+                key=lambda v: priority_list.index(v) if v in priority_list else len(priority_list),
+            )
 
     # Debug: Print fallback ordering
     primary_str = " → ".join(primary_vendors)
@@ -184,6 +310,22 @@ def route_to_vendor(method: str, *args, **kwargs):
                     vendor,
                     method,
                 )
+            continue
+
+        if not _is_vendor_available(vendor):
+            logger.info(
+                "Vendor '%s' unavailable in current environment, skipping",
+                vendor,
+            )
+            continue
+
+        breaker_until = _vendor_circuit_breaker.get(vendor)
+        if breaker_until and time.time() < breaker_until:
+            logger.warning(
+                "Vendor '%s' skipped due to circuit breaker until %.0f",
+                vendor,
+                breaker_until,
+            )
             continue
 
         vendor_impl = VENDOR_METHODS[method][vendor]
@@ -256,7 +398,8 @@ def route_to_vendor(method: str, *args, **kwargs):
             logger.debug(
                 "Vendor '%s' succeeded - %s", vendor, result_summary
             )
-            
+            _clear_vendor_failure(vendor)
+
             # Stopping logic: Stop after first successful vendor for single-vendor configs
             # Multiple vendor configs (comma-separated) may want to collect from multiple sources
             if len(primary_vendors) == 1:
@@ -267,6 +410,7 @@ def route_to_vendor(method: str, *args, **kwargs):
                 break
         else:
             logger.warning("Vendor '%s' produced no results", vendor)
+            _register_vendor_failure(vendor, config)
 
     # Final result summary
     if not results:
@@ -275,18 +419,51 @@ def route_to_vendor(method: str, *args, **kwargs):
             vendor_attempt_count,
             method,
         )
+        if cache and cache_key:
+            stale = cache.get_stale(method, cache_key)
+            if stale is not None:
+                logger.warning(
+                    "Returning stale cached data for method '%s' after vendor failures",
+                    method,
+                )
+                return stale
         raise RuntimeError(f"All vendor implementations failed for method '{method}'")
+
+    logger.debug(
+        "Method '%s' completed with %d result(s) from %d vendor attempt(s)",
+        method,
+        len(results),
+        vendor_attempt_count,
+    )
+
+    if len(results) == 1:
+        final_response = results[0]
     else:
+        final_response = '\n'.join(str(result) for result in results)
+
+    if cache and ttl_seconds and cache_key and successful_vendor:
+        cache.set(method, cache_key, final_response, successful_vendor)
         logger.debug(
-            "Method '%s' completed with %d result(s) from %d vendor attempt(s)",
+            "Cached response for method '%s' via vendor '%s' (ttl=%ss)",
             method,
-            len(results),
-            vendor_attempt_count,
+            successful_vendor,
+            ttl_seconds,
         )
 
-    # Return single result if only one, otherwise concatenate as string
-    if len(results) == 1:
-        return results[0]
+    vendor_costs = config.get("vendor_costs", {})
+    cost = vendor_costs.get(successful_vendor)
+    if cost:
+        logger.info(
+            "Vendor '%s' cost estimated at %.4f credits for method '%s'",
+            successful_vendor,
+            cost,
+            method,
+        )
     else:
-        # Convert all results to strings and concatenate
-        return '\n'.join(str(result) for result in results)
+        logger.debug(
+            "Vendor '%s' completed method '%s' without cost estimate",
+            successful_vendor,
+            method,
+        )
+
+    return final_response

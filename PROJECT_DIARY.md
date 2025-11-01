@@ -16,3 +16,6 @@
 - Manual end-to-end verification of audit JSONL during CLI runs remains to be scheduled; smoke test via `AuditLogger` helper confirmed file output.
 - Patched `FinancialSituationMemory` to use `chromadb.PersistentClient`, restoring CLI compatibility with latest Chroma releases while retaining backward compatibility shims.
 - Manual end-to-end verification of audit JSONL during CLI runs remains to be scheduled; smoke test via `AuditLogger` helper confirmed file output.
+- Phase 3 kickoff: implemented SQLite-backed response cache with configurable TTLs, vendor priority ordering, and cost logging. Added regression coverage in `tests/dataflows/test_cache_layer.py` and `tests/dataflows/test_route_caching.py` (skips when vendor deps missing).
+- Extended vendor redundancy: added circuit breaker logic, optional dependency handling for yfinance/Google, and regression tests ensuring fallbacks skip tripped vendors while logging cost metrics.
+- Integrated live Finnhub and NewsAPI vendors with optional API key detection, expanding fundamentals/news coverage while keeping local cache as fallback.

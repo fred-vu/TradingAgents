@@ -82,6 +82,13 @@ def _default_audit_dir() -> str:
     )
 
 
+def _default_cache_db_path() -> str:
+    return os.getenv(
+        "TRADINGAGENTS_CACHE_DB",
+        str((_PROJECT_DIR / ".." / "cache" / "trading_data.db").resolve()),
+    )
+
+
 _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "project_dir": str(_PROJECT_DIR.resolve()),
     "results_dir": _default_results_dir(),
@@ -92,6 +99,31 @@ _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "log_level": os.getenv("TRADINGAGENTS_LOG_LEVEL", "INFO"),
     "audit_log_dir": _default_audit_dir(),
     "audit_retention_days": int(os.getenv("TRADINGAGENTS_AUDIT_RETENTION", "90")),
+    "cache_db_path": _default_cache_db_path(),
+    "cache_ttl": {
+        "get_news": int(os.getenv("TRADINGAGENTS_TTL_NEWS", "3600")),
+        "get_global_news": int(os.getenv("TRADINGAGENTS_TTL_GLOBAL_NEWS", "3600")),
+        "get_fundamentals": int(os.getenv("TRADINGAGENTS_TTL_FUNDAMENTALS", "86400")),
+        "get_balance_sheet": int(os.getenv("TRADINGAGENTS_TTL_BALANCE_SHEET", "86400")),
+        "get_cashflow": int(os.getenv("TRADINGAGENTS_TTL_CASHFLOW", "86400")),
+        "get_income_statement": int(os.getenv("TRADINGAGENTS_TTL_INCOME_STATEMENT", "86400")),
+        "get_indicators": int(os.getenv("TRADINGAGENTS_TTL_INDICATORS", "900")),
+        "get_stock_data": int(os.getenv("TRADINGAGENTS_TTL_STOCK_DATA", "900")),
+    },
+    "vendor_costs": {
+        "alpha_vantage": float(os.getenv("TRADINGAGENTS_COST_ALPHA_VANTAGE", "0.0")),
+        "yfinance": float(os.getenv("TRADINGAGENTS_COST_YFINANCE", "0.0")),
+        "finnhub": float(os.getenv("TRADINGAGENTS_COST_FINNHUB", "0.0")),
+        "openai": float(os.getenv("TRADINGAGENTS_COST_OPENAI", "0.0")),
+        "openrouter": float(os.getenv("TRADINGAGENTS_COST_OPENROUTER", "0.0")),
+        "google": float(os.getenv("TRADINGAGENTS_COST_GOOGLE", "0.0")),
+    },
+    "vendor_priority_order": os.getenv(
+        "TRADINGAGENTS_VENDOR_PRIORITY_ORDER",
+        "",
+    ),
+    "vendor_circuit_breaker_threshold": int(os.getenv("TRADINGAGENTS_VENDOR_CB_THRESHOLD", "3")),
+    "vendor_circuit_breaker_cooldown": int(os.getenv("TRADINGAGENTS_VENDOR_CB_COOLDOWN", "300")),
     # LLM settings
     "llm_provider": "openai",
     "deep_think_llm": "o4-mini",

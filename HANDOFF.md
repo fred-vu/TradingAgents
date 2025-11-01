@@ -20,6 +20,9 @@
 - Emitted JSONL audit events from `TradingAgentsGraph`, with schema documented in `docs/AUDIT_LOG_SCHEMA.md`.
 - Added dedicated `AuditLogger` (`tradingagents/utils/audit.py`) with 90-day retention, expanded schema capture, and automated pruning; verified via new `tests/utils/test_audit_logger.py`.
 - Updated memory persistence to rely on `chromadb.PersistentClient`, ensuring compatibility with latest Chroma releases while maintaining test coverage.
+- Implemented Phase 3 caching/cost groundwork: SQLite response cache, vendor priority ordering, and cost logging in `tradingagents/dataflows/interface.py` with supporting tests.
+- Added circuit breaker and optional dependency handling for vendor fallbacks; updated tests to confirm retries and skipping behavior when primary providers fail.
+- Added Finnhub + NewsAPI integrations behind vendor availability checks; audit `.env.example` documents required API keys for live data.
 
 ### Outstanding / Next Actions
 - Evaluate additional observability needs (e.g., log rotation, external sinks) and confirm LangSmith configuration with stakeholders.

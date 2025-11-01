@@ -3,6 +3,7 @@ results/
 memory/
 logs/
 audit_logs/
+cache/
 env/
 __pycache__/
 .DS_Store
