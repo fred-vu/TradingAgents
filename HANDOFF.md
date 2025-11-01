@@ -12,9 +12,16 @@
 - Introduced provider-aware LLM factory with validation, merged provider overrides, and ensured config-driven debate/recursion settings.
 - Hardened OpenAI data vendor parsing and replaced hardcoded data directories with portable defaults; expanded regression suite across `tests/graph`, `tests/dataflows`, and `tests/config`.
 
+## Phase 2 – Persistence & Logging (in progress)
+
+### Completed
+- Implemented persistent Chroma-backed memories with configurable storage directories and regression coverage.
+- Added `tradingagents/logging_utils.py` to centralise logging setup, audit streams, and LangSmith toggles; replaced ad-hoc `print` statements with structured logging.
+- Emitted JSONL audit events from `TradingAgentsGraph`, with schema documented in `docs/AUDIT_LOG_SCHEMA.md`.
+
 ### Outstanding / Next Actions
-- Review remaining Phase 1 checklist (e.g., config validation messaging, additional data vendor coverage) and identify any follow-up issues raised by tests.
-- Coordinate with human reviewer for merged changes, then advance to Phase 2 persistence/logging tasks.
+- Evaluate additional observability needs (e.g., log rotation, external sinks) and confirm LangSmith configuration with stakeholders.
+- Begin Phase 2 deliverables for durable audit log validation once human review is complete.
 
 ### Testing
 - `pytest tests -v`

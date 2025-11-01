@@ -5,6 +5,14 @@ from typing import Dict, Any
 
 _PROJECT_DIR = Path(__file__).resolve().parent
 
+
+def _bool_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
 _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
     "openai": {
         "api_key_env": "OPENAI_API_KEY",
@@ -53,20 +61,43 @@ def _default_data_cache_dir() -> str:
     )
 
 
+def _default_memory_dir() -> str:
+    return os.getenv(
+        "TRADINGAGENTS_MEMORY_DIR",
+        str((_PROJECT_DIR / ".." / "memory").resolve()),
+    )
+
+
+def _default_log_dir() -> str:
+    return os.getenv(
+        "TRADINGAGENTS_LOG_DIR",
+        str((_PROJECT_DIR / ".." / "logs").resolve()),
+    )
+
+
 _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "project_dir": str(_PROJECT_DIR.resolve()),
     "results_dir": _default_results_dir(),
     "data_dir": _default_data_dir(),
     "data_cache_dir": _default_data_cache_dir(),
+    "memory_dir": _default_memory_dir(),
+    "log_dir": _default_log_dir(),
+    "log_level": os.getenv("TRADINGAGENTS_LOG_LEVEL", "INFO"),
     # LLM settings
     "llm_provider": "openai",
     "deep_think_llm": "o4-mini",
     "quick_think_llm": "gpt-4o-mini",
     "backend_url": _DEFAULT_PROVIDER_CONFIG["openai"]["base_url"],
+    # LangSmith / observability
+    "enable_langsmith": _bool_env("TRADINGAGENTS_ENABLE_LANGSMITH", False),
+    "langsmith_project": os.getenv("LANGSMITH_PROJECT", "TradingAgents"),
+    "langsmith_api_key": os.getenv("LANGSMITH_API_KEY", ""),
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
+    # Audit logging
+    "audit_log_filename": "trade_audit.jsonl",
     # Data vendor configuration
     "data_vendors": {
         "core_stock_apis": "yfinance",        # Options: yfinance, alpha_vantage, local

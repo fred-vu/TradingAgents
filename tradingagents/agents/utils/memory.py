@@ -1,3 +1,6 @@
+import logging
+from pathlib import Path
+
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
@@ -5,47 +8,91 @@ from openai import OpenAI
 
 class FinancialSituationMemory:
     def __init__(self, name, config):
-        if config["backend_url"] == "http://localhost:11434/v1":
+        self.logger = logging.getLogger("tradingagents.memory")
+        self.name = name
+        backend_url = config.get("backend_url", "https://api.openai.com/v1")
+        if backend_url == "http://localhost:11434/v1":
             self.embedding = "nomic-embed-text"
         else:
             self.embedding = "text-embedding-3-small"
-        self.client = OpenAI(base_url=config["backend_url"])
-        self.chroma_client = chromadb.Client(Settings(allow_reset=True))
-        self.situation_collection = self.chroma_client.create_collection(name=name)
+
+        self.client = OpenAI(base_url=backend_url)
+
+        persist_directory = Path(
+            config.get("memory_dir") or config.get("data_cache_dir") or "."
+        ).expanduser()
+        persist_directory.mkdir(parents=True, exist_ok=True)
+        self.persist_directory = str(persist_directory)
+
+        settings = Settings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=self.persist_directory,
+            anonymized_telemetry=False,
+            allow_reset=False,
+        )
+
+        self.chroma_client = chromadb.Client(settings)
+        try:
+            self.situation_collection = self.chroma_client.get_or_create_collection(name=name)
+        except AttributeError:
+            try:
+                self.situation_collection = self.chroma_client.get_collection(name=name)
+            except Exception:
+                self.situation_collection = self.chroma_client.create_collection(name=name)
+
+        self.logger.debug(
+            "Initialized memory collection '%s' at %s using embedding model %s",
+            name,
+            self.persist_directory,
+            self.embedding,
+        )
 
     def get_embedding(self, text):
-        """Get OpenAI embedding for a text"""
-        
-        response = self.client.embeddings.create(
-            model=self.embedding, input=text
-        )
+        """Get OpenAI embedding for a text."""
+        response = self.client.embeddings.create(model=self.embedding, input=text)
         return response.data[0].embedding
 
     def add_situations(self, situations_and_advice):
-        """Add financial situations and their corresponding advice. Parameter is a list of tuples (situation, rec)"""
+        """Add financial situations and their corresponding advice."""
+        if not situations_and_advice:
+            return
 
-        situations = []
+        offset = self.situation_collection.count()
+        documents = []
         advice = []
         ids = []
         embeddings = []
 
-        offset = self.situation_collection.count()
-
         for i, (situation, recommendation) in enumerate(situations_and_advice):
-            situations.append(situation)
+            documents.append(situation)
             advice.append(recommendation)
             ids.append(str(offset + i))
             embeddings.append(self.get_embedding(situation))
 
         self.situation_collection.add(
-            documents=situations,
+            documents=documents,
             metadatas=[{"recommendation": rec} for rec in advice],
             embeddings=embeddings,
             ids=ids,
         )
 
+        if hasattr(self.chroma_client, "persist"):
+            try:
+                self.chroma_client.persist()
+            except Exception:
+                self.logger.debug("Chroma client persist() failed; continuing without persistence.", exc_info=True)
+
+        self.logger.debug(
+            "Persisted %d situations to collection '%s'",
+            len(situations_and_advice),
+            self.name,
+        )
+
     def get_memories(self, current_situation, n_matches=1):
-        """Find matching recommendations using OpenAI embeddings"""
+        """Find matching recommendations using OpenAI embeddings."""
+        if self.situation_collection.count() == 0:
+            return []
+
         query_embedding = self.get_embedding(current_situation)
 
         results = self.situation_collection.query(
@@ -54,60 +101,18 @@ class FinancialSituationMemory:
             include=["metadatas", "documents", "distances"],
         )
 
-        matched_results = []
-        for i in range(len(results["documents"][0])):
-            matched_results.append(
+        matches = []
+        documents = results.get("documents", [[]])[0]
+        metadatas = results.get("metadatas", [[]])[0]
+        distances = results.get("distances", [[]])[0]
+
+        for doc, metadata, distance in zip(documents, metadatas, distances):
+            matches.append(
                 {
-                    "matched_situation": results["documents"][0][i],
-                    "recommendation": results["metadatas"][0][i]["recommendation"],
-                    "similarity_score": 1 - results["distances"][0][i],
+                    "matched_situation": doc,
+                    "recommendation": metadata.get("recommendation"),
+                    "similarity_score": 1 - distance,
                 }
             )
 
-        return matched_results
-
-
-if __name__ == "__main__":
-    # Example usage
-    matcher = FinancialSituationMemory()
-
-    # Example data
-    example_data = [
-        (
-            "High inflation rate with rising interest rates and declining consumer spending",
-            "Consider defensive sectors like consumer staples and utilities. Review fixed-income portfolio duration.",
-        ),
-        (
-            "Tech sector showing high volatility with increasing institutional selling pressure",
-            "Reduce exposure to high-growth tech stocks. Look for value opportunities in established tech companies with strong cash flows.",
-        ),
-        (
-            "Strong dollar affecting emerging markets with increasing forex volatility",
-            "Hedge currency exposure in international positions. Consider reducing allocation to emerging market debt.",
-        ),
-        (
-            "Market showing signs of sector rotation with rising yields",
-            "Rebalance portfolio to maintain target allocations. Consider increasing exposure to sectors benefiting from higher rates.",
-        ),
-    ]
-
-    # Add the example situations and recommendations
-    matcher.add_situations(example_data)
-
-    # Example query
-    current_situation = """
-    Market showing increased volatility in tech sector, with institutional investors 
-    reducing positions and rising interest rates affecting growth stock valuations
-    """
-
-    try:
-        recommendations = matcher.get_memories(current_situation, n_matches=2)
-
-        for i, rec in enumerate(recommendations, 1):
-            print(f"\nMatch {i}:")
-            print(f"Similarity Score: {rec['similarity_score']:.2f}")
-            print(f"Matched Situation: {rec['matched_situation']}")
-            print(f"Recommendation: {rec['recommendation']}")
-
-    except Exception as e:
-        print(f"Error during recommendation: {str(e)}")
+        return matches

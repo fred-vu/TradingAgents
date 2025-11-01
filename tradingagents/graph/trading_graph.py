@@ -1,6 +1,7 @@
 # TradingAgents/graph/trading_graph.py
 
 import os
+import logging
 from pathlib import Path
 import json
 from datetime import date
@@ -42,6 +43,7 @@ from .propagation import Propagator
 from .reflection import Reflector
 from .signal_processing import SignalProcessor
 from .llm_factory import build_llms, LLMConfigurationError
+from tradingagents.logging_utils import init_logging, emit_audit_record
 
 
 class TradingAgentsGraph:
@@ -62,6 +64,11 @@ class TradingAgentsGraph:
         """
         self.debug = debug
         self.config = self._initialize_config(config)
+
+        init_logging(self.config)
+        self.logger = logging.getLogger("tradingagents.graph")
+
+        self._enable_langsmith_if_requested()
 
         # Initialize LLMs first to resolve provider backend
         try:
@@ -117,6 +124,7 @@ class TradingAgentsGraph:
         self.curr_state = None
         self.ticker = None
         self.log_states_dict = {}  # date to full state dict
+        self.audit_logger_enabled = True
 
         # Set up the graph
         self.graph = self.graph_setup.setup_graph(selected_analysts)
@@ -135,6 +143,16 @@ class TradingAgentsGraph:
                     base["provider_config"], provider_overrides
                 )
         return base
+
+    def _enable_langsmith_if_requested(self) -> None:
+        if not self.config.get("enable_langsmith"):
+            return
+
+        os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+        if project := self.config.get("langsmith_project"):
+            os.environ.setdefault("LANGCHAIN_PROJECT", project)
+        if api_key := self.config.get("langsmith_api_key"):
+            os.environ.setdefault("LANGCHAIN_API_KEY", api_key)
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
@@ -210,7 +228,7 @@ class TradingAgentsGraph:
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""
-        self.log_states_dict[str(trade_date)] = {
+        entry = {
             "company_of_interest": final_state["company_of_interest"],
             "trade_date": final_state["trade_date"],
             "market_report": final_state["market_report"],
@@ -239,6 +257,7 @@ class TradingAgentsGraph:
             "investment_plan": final_state["investment_plan"],
             "final_trade_decision": final_state["final_trade_decision"],
         }
+        self.log_states_dict[str(trade_date)] = entry
 
         # Save to file
         directory = Path(f"eval_results/{self.ticker}/TradingAgentsStrategy_logs/")
@@ -249,6 +268,17 @@ class TradingAgentsGraph:
             "w",
         ) as f:
             json.dump(self.log_states_dict, f, indent=4)
+
+        emit_audit_record(
+            {
+                "ticker": self.ticker,
+                "trade_date": trade_date,
+                "final_trade_decision": final_state["final_trade_decision"],
+                "trader_plan": final_state.get("trader_investment_plan"),
+                "risk_judge_decision": final_state["risk_debate_state"]["judge_decision"],
+                "investment_judge_decision": final_state["investment_debate_state"]["judge_decision"],
+            }
+        )
 
     def reflect_and_remember(self, returns_losses):
         """Reflect on decisions and update memory based on returns."""
