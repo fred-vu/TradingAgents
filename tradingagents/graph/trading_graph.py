@@ -43,7 +43,8 @@ from .propagation import Propagator
 from .reflection import Reflector
 from .signal_processing import SignalProcessor
 from .llm_factory import build_llms, LLMConfigurationError
-from tradingagents.logging_utils import init_logging, emit_audit_record
+from tradingagents.logging_utils import init_logging
+from tradingagents.utils.audit import AuditLogger
 
 
 class TradingAgentsGraph:
@@ -69,6 +70,10 @@ class TradingAgentsGraph:
         self.logger = logging.getLogger("tradingagents.graph")
 
         self._enable_langsmith_if_requested()
+        self.audit_logger = AuditLogger(
+            base_dir=self.config.get("audit_log_dir", self.config.get("log_dir")),
+            retention_days=self.config.get("audit_retention_days", 90),
+        )
 
         # Initialize LLMs first to resolve provider backend
         try:
@@ -143,6 +148,48 @@ class TradingAgentsGraph:
                     base["provider_config"], provider_overrides
                 )
         return base
+
+    def _build_audit_record(self, final_state: Dict[str, Any], trade_date: str) -> Dict[str, Any]:
+        investment_state = final_state.get("investment_debate_state", {})
+        risk_state = final_state.get("risk_debate_state", {})
+
+        analysts = {
+            "market_analyst": {
+                "signal": None,
+                "reasoning": final_state.get("market_report", ""),
+            },
+            "news_analyst": {
+                "signal": None,
+                "reasoning": final_state.get("news_report", ""),
+            },
+            "fundamental_analyst": {
+                "signal": None,
+                "reasoning": final_state.get("fundamentals_report", ""),
+            },
+            "sentiment_analyst": {
+                "signal": None,
+                "reasoning": final_state.get("sentiment_report", ""),
+            },
+        }
+
+        record = {
+            "trade_date": trade_date,
+            "symbol": final_state.get("company_of_interest", self.ticker),
+            "recommendation": final_state.get("final_trade_decision"),
+            "confidence": final_state.get("confidence"),
+            "analysts": analysts,
+            "debate_rounds": investment_state.get("count", 0),
+            "risk_rounds": risk_state.get("count", 0),
+            "risk_score": final_state.get("risk_score"),
+            "trader_notes": final_state.get("trader_investment_plan"),
+            "final_decision": final_state.get("final_trade_decision"),
+            "investment_judge_decision": investment_state.get("judge_decision"),
+            "risk_judge_decision": risk_state.get("judge_decision"),
+            "debate_history": investment_state.get("history"),
+            "risk_history": risk_state.get("history"),
+        }
+
+        return record
 
     def _enable_langsmith_if_requested(self) -> None:
         if not self.config.get("enable_langsmith"):
@@ -269,16 +316,10 @@ class TradingAgentsGraph:
         ) as f:
             json.dump(self.log_states_dict, f, indent=4)
 
-        emit_audit_record(
-            {
-                "ticker": self.ticker,
-                "trade_date": trade_date,
-                "final_trade_decision": final_state["final_trade_decision"],
-                "trader_plan": final_state.get("trader_investment_plan"),
-                "risk_judge_decision": final_state["risk_debate_state"]["judge_decision"],
-                "investment_judge_decision": final_state["investment_debate_state"]["judge_decision"],
-            }
-        )
+        try:
+            self.audit_logger.log(self._build_audit_record(final_state, trade_date))
+        except Exception:
+            self.logger.warning("Failed to write audit log entry", exc_info=True)
 
     def reflect_and_remember(self, returns_losses):
         """Reflect on decisions and update memory based on returns."""

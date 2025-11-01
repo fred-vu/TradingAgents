@@ -12,3 +12,5 @@
 - Added `tradingagents/logging_utils.py` with configurable log directories, audit stream, and LangSmith hooks; validated via `tests/logging/test_logging_utils.py`.
 - Updated `FinancialSituationMemory` to leverage persistent Chroma directories and added regression coverage in `tests/agents/test_memory_persistence.py`.
 - Replaced vendor routing prints with structured logging and documented audit schema (`docs/AUDIT_LOG_SCHEMA.md`).
+- Implemented dedicated `AuditLogger` with retention policy, richer schema, and integration into `TradingAgentsGraph`; added tests in `tests/utils/test_audit_logger.py` and expanded documentation.
+- Patched `FinancialSituationMemory` to use `chromadb.PersistentClient`, restoring CLI compatibility with latest Chroma releases while retaining backward compatibility shims.

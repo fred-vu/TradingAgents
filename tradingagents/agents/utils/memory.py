@@ -5,6 +5,11 @@ import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 
+try:
+    from chromadb import PersistentClient  # type: ignore
+except Exception:  # pragma: no cover - older chromadb versions
+    PersistentClient = None
+
 
 class FinancialSituationMemory:
     def __init__(self, name, config):
@@ -24,14 +29,16 @@ class FinancialSituationMemory:
         persist_directory.mkdir(parents=True, exist_ok=True)
         self.persist_directory = str(persist_directory)
 
-        settings = Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=self.persist_directory,
-            anonymized_telemetry=False,
-            allow_reset=False,
-        )
-
-        self.chroma_client = chromadb.Client(settings)
+        if PersistentClient is not None:
+            self.chroma_client = PersistentClient(
+                path=self.persist_directory,
+            )
+        else:
+            settings = Settings(
+                persist_directory=self.persist_directory,
+                anonymized_telemetry=False,
+            )
+            self.chroma_client = chromadb.Client(settings)
         try:
             self.situation_collection = self.chroma_client.get_or_create_collection(name=name)
         except AttributeError:

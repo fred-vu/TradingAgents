@@ -75,6 +75,13 @@ def _default_log_dir() -> str:
     )
 
 
+def _default_audit_dir() -> str:
+    return os.getenv(
+        "TRADINGAGENTS_AUDIT_LOG_DIR",
+        str((_PROJECT_DIR / ".." / "audit_logs").resolve()),
+    )
+
+
 _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "project_dir": str(_PROJECT_DIR.resolve()),
     "results_dir": _default_results_dir(),
@@ -83,6 +90,8 @@ _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "memory_dir": _default_memory_dir(),
     "log_dir": _default_log_dir(),
     "log_level": os.getenv("TRADINGAGENTS_LOG_LEVEL", "INFO"),
+    "audit_log_dir": _default_audit_dir(),
+    "audit_retention_days": int(os.getenv("TRADINGAGENTS_AUDIT_RETENTION", "90")),
     # LLM settings
     "llm_provider": "openai",
     "deep_think_llm": "o4-mini",

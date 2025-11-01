@@ -48,8 +48,9 @@ class DummyCollection:
 
 
 class DummyChromaClient:
-    def __init__(self, settings):
+    def __init__(self, settings=None, path=None):
         self.settings = settings
+        self.path = path
         self.persist_called = False
         self.collection = DummyCollection()
 
@@ -66,7 +67,7 @@ def patch_dependencies(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "chromadb",
-        types.SimpleNamespace(Client=DummyChromaClient),
+        types.SimpleNamespace(Client=DummyChromaClient, PersistentClient=DummyChromaClient),
     )
     monkeypatch.setitem(
         sys.modules,
@@ -100,7 +101,10 @@ def test_financial_memory_uses_persist_directory(tmp_path):
     assert memory.persist_directory == str(tmp_path)
     client = memory.chroma_client
     assert isinstance(client, DummyChromaClient)
-    assert client.settings["persist_directory"] == str(tmp_path)
+    if client.settings is not None:
+        assert client.settings["persist_directory"] == str(tmp_path)
+    else:
+        assert client.path == str(tmp_path)
     assert client.collection.name == "test_collection"
 
 

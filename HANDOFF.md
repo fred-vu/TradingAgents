@@ -18,6 +18,8 @@
 - Implemented persistent Chroma-backed memories with configurable storage directories and regression coverage.
 - Added `tradingagents/logging_utils.py` to centralise logging setup, audit streams, and LangSmith toggles; replaced ad-hoc `print` statements with structured logging.
 - Emitted JSONL audit events from `TradingAgentsGraph`, with schema documented in `docs/AUDIT_LOG_SCHEMA.md`.
+- Added dedicated `AuditLogger` (`tradingagents/utils/audit.py`) with 90-day retention, expanded schema capture, and automated pruning; verified via new `tests/utils/test_audit_logger.py`.
+- Updated memory persistence to rely on `chromadb.PersistentClient`, ensuring compatibility with latest Chroma releases while maintaining test coverage.
 
 ### Outstanding / Next Actions
 - Evaluate additional observability needs (e.g., log rotation, external sinks) and confirm LangSmith configuration with stakeholders.

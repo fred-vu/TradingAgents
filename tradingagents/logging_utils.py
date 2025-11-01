@@ -26,7 +26,10 @@ def init_logging(config: Dict[str, Any]) -> None:
         level = getattr(logging, log_level, logging.INFO)
 
         log_file = log_dir / "tradingagents.log"
-        audit_file = log_dir / config.get("audit_log_filename", "trade_audit.jsonl")
+
+        audit_dir = Path(config.get("audit_log_dir", log_dir)).expanduser()
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        audit_file = audit_dir / config.get("audit_log_filename", "trade_audit.jsonl")
 
         formatter = logging.Formatter(
             "%(asctime)s | %(name)s | %(levelname)s | %(message)s",
