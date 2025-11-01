@@ -12,3 +12,9 @@ eval_results/
 eval_data/
 *.egg-info/
 .env
+AGENTS.md
+audit.md
+PROJECT_DIARY.md
+HANDOFF.md
+questionaire.md
+trading_agents_dev_plan.md

@@ -52,7 +52,10 @@ class AuditLogger:
         prepared = self._prepare_record(record)
         timestamp = datetime.fromisoformat(prepared["timestamp"])
         file_path = self._file_for_date(timestamp)
+        line = json.dumps(prepared, default=str)
         with file_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(prepared, default=str))
+            fh.write(line)
             fh.write("\n")
+
+        logging.getLogger("tradingagents.audit").info(line)
         return file_path

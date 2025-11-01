@@ -24,6 +24,7 @@
 ### Outstanding / Next Actions
 - Evaluate additional observability needs (e.g., log rotation, external sinks) and confirm LangSmith configuration with stakeholders.
 - Begin Phase 2 deliverables for durable audit log validation once human review is complete.
+- Schedule a full CLI propagation check to confirm audit JSONL entries appear in `audit_logs/` (smoke test via helper passed, but end-to-end run still pending).
 
 ### Testing
 - `pytest tests -v`
