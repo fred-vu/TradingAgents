@@ -1,5 +1,26 @@
 from openai import OpenAI
+
 from .config import get_config
+
+
+def _extract_response_text(response):
+    """Extract text content from OpenAI Responses API payloads."""
+    output_text = getattr(response, "output_text", None)
+    if output_text:
+        return output_text
+
+    output = getattr(response, "output", None)
+    if output:
+        for block in output:
+            content = getattr(block, "content", None)
+            if not content:
+                continue
+            for item in content:
+                text = getattr(item, "text", None)
+                if text:
+                    return text
+
+    raise RuntimeError("OpenAI response did not include textual content.")
 
 
 def get_stock_news_openai(query, start_date, end_date):
@@ -34,7 +55,7 @@ def get_stock_news_openai(query, start_date, end_date):
         store=True,
     )
 
-    return response.output[1].content[0].text
+    return _extract_response_text(response)
 
 
 def get_global_news_openai(curr_date, look_back_days=7, limit=5):
@@ -69,7 +90,7 @@ def get_global_news_openai(curr_date, look_back_days=7, limit=5):
         store=True,
     )
 
-    return response.output[1].content[0].text
+    return _extract_response_text(response)
 
 
 def get_fundamentals_openai(ticker, curr_date):
@@ -104,4 +125,4 @@ def get_fundamentals_openai(ticker, curr_date):
         store=True,
     )
 
-    return response.output[1].content[0].text
+    return _extract_response_text(response)

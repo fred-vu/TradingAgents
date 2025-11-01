@@ -6,14 +6,14 @@ import json
 from datetime import date
 from typing import Dict, Any, Tuple, List, Optional
 
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
-
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import *
-from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.default_config import (
+    DEFAULT_CONFIG,
+    copy_default_config,
+    merge_provider_config,
+)
 from tradingagents.agents.utils.memory import FinancialSituationMemory
 from tradingagents.agents.utils.agent_states import (
     AgentState,
@@ -41,6 +41,7 @@ from .setup import GraphSetup
 from .propagation import Propagator
 from .reflection import Reflector
 from .signal_processing import SignalProcessor
+from .llm_factory import build_llms, LLMConfigurationError
 
 
 class TradingAgentsGraph:
@@ -60,30 +61,25 @@ class TradingAgentsGraph:
             config: Configuration dictionary. If None, uses default config
         """
         self.debug = debug
-        self.config = config or DEFAULT_CONFIG
+        self.config = self._initialize_config(config)
+
+        # Initialize LLMs first to resolve provider backend
+        try:
+            llm_init = build_llms(self.config)
+        except LLMConfigurationError as exc:
+            raise ValueError(f"Failed to initialize LLM provider: {exc}") from exc
+        self.deep_thinking_llm = llm_init.deep_llm
+        self.quick_thinking_llm = llm_init.quick_llm
+        self.llm_provider = llm_init.provider
+        if llm_init.base_url:
+            self.config["backend_url"] = llm_init.base_url
 
         # Update the interface's config
         set_config(self.config)
 
         # Create necessary directories
-        os.makedirs(
-            os.path.join(self.config["project_dir"], "dataflows/data_cache"),
-            exist_ok=True,
-        )
+        os.makedirs(self.config["data_cache_dir"], exist_ok=True)
 
-        # Initialize LLMs
-        if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
-            self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
-            self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
-        elif self.config["llm_provider"].lower() == "anthropic":
-            self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
-            self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
-        elif self.config["llm_provider"].lower() == "google":
-            self.deep_thinking_llm = ChatGoogleGenerativeAI(model=self.config["deep_think_llm"])
-            self.quick_thinking_llm = ChatGoogleGenerativeAI(model=self.config["quick_think_llm"])
-        else:
-            raise ValueError(f"Unsupported LLM provider: {self.config['llm_provider']}")
-        
         # Initialize memories
         self.bull_memory = FinancialSituationMemory("bull_memory", self.config)
         self.bear_memory = FinancialSituationMemory("bear_memory", self.config)
@@ -95,7 +91,10 @@ class TradingAgentsGraph:
         self.tool_nodes = self._create_tool_nodes()
 
         # Initialize components
-        self.conditional_logic = ConditionalLogic()
+        self.conditional_logic = ConditionalLogic(
+            max_debate_rounds=self.config.get("max_debate_rounds", 1),
+            max_risk_discuss_rounds=self.config.get("max_risk_discuss_rounds", 1),
+        )
         self.graph_setup = GraphSetup(
             self.quick_thinking_llm,
             self.deep_thinking_llm,
@@ -108,7 +107,9 @@ class TradingAgentsGraph:
             self.conditional_logic,
         )
 
-        self.propagator = Propagator()
+        self.propagator = Propagator(
+            max_recur_limit=self.config.get("max_recur_limit", 100)
+        )
         self.reflector = Reflector(self.quick_thinking_llm)
         self.signal_processor = SignalProcessor(self.quick_thinking_llm)
 
@@ -119,6 +120,21 @@ class TradingAgentsGraph:
 
         # Set up the graph
         self.graph = self.graph_setup.setup_graph(selected_analysts)
+
+    def _initialize_config(self, overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """Merge overrides with defaults and ensure provider config is up to date."""
+        base = copy_default_config()
+        if overrides:
+            provider_overrides = overrides.get("provider_config")
+            non_provider_overrides = {
+                key: value for key, value in overrides.items() if key != "provider_config"
+            }
+            base.update(non_provider_overrides)
+            if provider_overrides:
+                base["provider_config"] = merge_provider_config(
+                    base["provider_config"], provider_overrides
+                )
+        return base
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""

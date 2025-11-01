@@ -9,13 +9,15 @@
 - Fixed fundamentals reference in risk manager node and emphasized valuation checks within the decision prompt.
 - Added targeted tests ensuring fundamentals flow into memory/prompt handling and that missing data does not break execution.
 - Documented agent state schema for downstream contributors.
+- Introduced provider-aware LLM factory with validation, merged provider overrides, and ensured config-driven debate/recursion settings.
+- Hardened OpenAI data vendor parsing and replaced hardcoded data directories with portable defaults; expanded regression suite across `tests/graph`, `tests/dataflows`, and `tests/config`.
 
 ### Outstanding / Next Actions
-- Pending review of Anthropic/OpenRouter instantiation fixes and OpenAI response parsing (other Phase 1 items).
-- After reviews, run full regression suite once remaining tasks are merged.
+- Review remaining Phase 1 checklist (e.g., config validation messaging, additional data vendor coverage) and identify any follow-up issues raised by tests.
+- Coordinate with human reviewer for merged changes, then advance to Phase 2 persistence/logging tasks.
 
 ### Testing
-- `pytest tests/agents/test_risk_manager.py -v`
+- `pytest tests -v`
 
 ### Notes for Next Agent
 - Ensure subsequent Phase 1 fixes append to tests folder (`tests/dataflows/`, `tests/graph/`).

@@ -1,5 +1,5 @@
 from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.default_config import copy_default_config
 
 from dotenv import load_dotenv
 
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Create a custom config
-config = DEFAULT_CONFIG.copy()
+config = copy_default_config()
 config["deep_think_llm"] = "gpt-4o-mini"  # Use a different model
 config["quick_think_llm"] = "gpt-4o-mini"  # Use a different model
 config["max_debate_rounds"] = 1  # Increase debate rounds
