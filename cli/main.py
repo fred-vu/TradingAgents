@@ -3,6 +3,7 @@ import datetime
 import typer
 from pathlib import Path
 from functools import wraps
+import re
 from rich.console import Console
 from dotenv import load_dotenv
 
@@ -28,6 +29,19 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.models import AnalystType
 from cli.utils import *
+
+
+def sanitize_text(value: str) -> str:
+    if not isinstance(value, str):
+        value = str(value)
+    return value.encode("utf-8", "ignore").decode("utf-8", "ignore")
+
+
+def safe_filename(value: str) -> str:
+    clean = sanitize_text(value)
+    clean = re.sub(r"[^A-Za-z0-9_.-]", "_", clean)
+    clean = clean.strip("._")
+    return clean or "unknown"
 
 console = Console()
 
@@ -754,7 +768,8 @@ def run_analysis():
     )
 
     # Create result directory
-    results_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
+    safe_ticker = safe_filename(selections["ticker"])
+    results_dir = Path(config["results_dir"]) / safe_ticker / selections["analysis_date"]
     results_dir.mkdir(parents=True, exist_ok=True)
     report_dir = results_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -767,8 +782,8 @@ def run_analysis():
         def wrapper(*args, **kwargs):
             func(*args, **kwargs)
             timestamp, message_type, content = obj.messages[-1]
-            content = content.replace("\n", " ")  # Replace newlines with spaces
-            with open(log_file, "a") as f:
+            content = sanitize_text(content).replace("\n", " ")  # Replace newlines with spaces
+            with open(log_file, "a", encoding="utf-8", errors="replace") as f:
                 f.write(f"{timestamp} [{message_type}] {content}\n")
         return wrapper
     
@@ -778,8 +793,9 @@ def run_analysis():
         def wrapper(*args, **kwargs):
             func(*args, **kwargs)
             timestamp, tool_name, args = obj.tool_calls[-1]
-            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
-            with open(log_file, "a") as f:
+            args_str = ", ".join(f"{k}={sanitize_text(v)}" for k, v in args.items())
+            tool_name = sanitize_text(tool_name)
+            with open(log_file, "a", encoding="utf-8", errors="replace") as f:
                 f.write(f"{timestamp} [Tool Call] {tool_name}({args_str})\n")
         return wrapper
 
@@ -792,8 +808,8 @@ def run_analysis():
                 content = obj.report_sections[section_name]
                 if content:
                     file_name = f"{section_name}.md"
-                    with open(report_dir / file_name, "w") as f:
-                        f.write(content)
+                    with open(report_dir / file_name, "w", encoding="utf-8", errors="replace") as f:
+                        f.write(sanitize_text(content))
         return wrapper
 
     message_buffer.add_message = save_message_decorator(message_buffer, "add_message")
@@ -808,13 +824,13 @@ def run_analysis():
         update_display(layout)
 
         # Add initial messages
-        message_buffer.add_message("System", f"Selected ticker: {selections['ticker']}")
+        message_buffer.add_message("System", f"Selected ticker: {sanitize_text(selections['ticker'])}")
         message_buffer.add_message(
             "System", f"Analysis date: {selections['analysis_date']}"
         )
         message_buffer.add_message(
             "System",
-            f"Selected analysts: {', '.join(analyst.value for analyst in selections['analysts'])}",
+            f"Selected analysts: {', '.join(sanitize_text(analyst.value) for analyst in selections['analysts'])}",
         )
         update_display(layout)
 
@@ -835,7 +851,7 @@ def run_analysis():
 
         # Create spinner text
         spinner_text = (
-            f"Analyzing {selections['ticker']} on {selections['analysis_date']}..."
+            f"Analyzing {sanitize_text(selections['ticker'])} on {selections['analysis_date']}..."
         )
         update_display(layout, spinner_text)
 
