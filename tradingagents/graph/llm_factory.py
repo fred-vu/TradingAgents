@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple
@@ -57,6 +58,25 @@ def _resolve_api_key(
     return api_key
 
 
+def _resolve_model_alias(
+    model_name: str,
+    provider: str,
+    provider_config: Dict[str, Any],
+    logger: logging.Logger,
+) -> Tuple[str, Dict[str, float] | None]:
+    """Map friendly model aliases to provider-specific identifiers."""
+    if provider != "openrouter":
+        return model_name, None
+
+    aliases = provider_config.get("model_aliases", {}) or {}
+    resolved = aliases.get(model_name, model_name)
+    if resolved != model_name:
+        logger.info("OpenRouter alias '%s' mapped to '%s'", model_name, resolved)
+
+    cost_map = provider_config.get("cost_estimates", {}) or {}
+    return resolved, cost_map.get(resolved)
+
+
 def build_llms(config: Dict[str, Any]) -> LLMInitResult:
     """Instantiate provider-specific LLM clients for deep/quick thinking roles."""
     provider, provider_config = _resolve_provider_settings(config)
@@ -69,6 +89,15 @@ def build_llms(config: Dict[str, Any]) -> LLMInitResult:
         raise LLMConfigurationError(
             "Both 'deep_think_llm' and 'quick_think_llm' must be configured."
         )
+
+    logger = logging.getLogger("tradingagents.llm")
+
+    deep_model, deep_cost = _resolve_model_alias(
+        deep_model, provider, provider_config, logger
+    )
+    quick_model, quick_cost = _resolve_model_alias(
+        quick_model, provider, provider_config, logger
+    )
 
     if provider in {"openai", "openrouter", "ollama"}:
         kwargs: Dict[str, Any] = {}
@@ -92,6 +121,22 @@ def build_llms(config: Dict[str, Any]) -> LLMInitResult:
         quick_llm = ChatGoogleGenerativeAI(model=quick_model, **kwargs)
     else:
         raise LLMConfigurationError(f"Unsupported LLM provider '{provider}'.")
+
+    def _log_cost(model: str, cost_info: Dict[str, float] | None, role: str) -> None:
+        if not cost_info:
+            return
+        prompt_cost = cost_info.get("prompt")
+        completion_cost = cost_info.get("completion")
+        logger.info(
+            "Estimated OpenRouter cost for %s model '%s': prompt=%.4f, completion=%.4f (USD per 1k tokens)",
+            role,
+            model,
+            prompt_cost or 0.0,
+            completion_cost or 0.0,
+        )
+
+    _log_cost(deep_model, deep_cost, "deep-think")
+    _log_cost(quick_model, quick_cost, "quick-think")
 
     return LLMInitResult(
         provider=provider,

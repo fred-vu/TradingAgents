@@ -19,3 +19,4 @@
 - Phase 3 kickoff: implemented SQLite-backed response cache with configurable TTLs, vendor priority ordering, and cost logging. Added regression coverage in `tests/dataflows/test_cache_layer.py` and `tests/dataflows/test_route_caching.py` (skips when vendor deps missing).
 - Extended vendor redundancy: added circuit breaker logic, optional dependency handling for yfinance/Google, and regression tests ensuring fallbacks skip tripped vendors while logging cost metrics.
 - Integrated live Finnhub and NewsAPI vendors with optional API key detection, expanding fundamentals/news coverage while keeping local cache as fallback.
+- Completed LLM Phase 3 work: OpenRouter alias mapping with cost estimates, logging improvements, and regression coverage to ensure cheaper models can be selected dynamically.

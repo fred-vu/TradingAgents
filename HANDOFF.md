@@ -23,6 +23,7 @@
 - Implemented Phase 3 caching/cost groundwork: SQLite response cache, vendor priority ordering, and cost logging in `tradingagents/dataflows/interface.py` with supporting tests.
 - Added circuit breaker and optional dependency handling for vendor fallbacks; updated tests to confirm retries and skipping behavior when primary providers fail.
 - Added Finnhub + NewsAPI integrations behind vendor availability checks; audit `.env.example` documents required API keys for live data.
+- Added OpenRouter alias/cost handling in the LLM factory so cheaper models can be selected with proper logging; regression coverage ensures alias mapping works as expected.
 
 ### Outstanding / Next Actions
 - Evaluate additional observability needs (e.g., log rotation, external sinks) and confirm LangSmith configuration with stakeholders.

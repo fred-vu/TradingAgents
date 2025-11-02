@@ -122,3 +122,23 @@ def test_build_llms_google_uses_google_client(monkeypatch):
     assert result.provider == "google"
     assert len(FakeChatGoogle.instances) == 2
     assert FakeChatGoogle.instances[0].kwargs["google_api_key"] == "google-key"
+
+
+def test_build_llms_openrouter_alias_mapping(monkeypatch, caplog):
+    _prime_stubs()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "router-key")
+    config = default_config.copy_default_config()
+    config["llm_provider"] = "openrouter"
+    config["deep_think_llm"] = "gpt-4-turbo"
+    config["quick_think_llm"] = "gpt-4o-mini"
+
+    with caplog.at_level("INFO", logger="tradingagents.llm"):
+        result = llm_factory.build_llms(config)
+
+    assert result.provider == "openrouter"
+    assert len(FakeChatOpenAI.instances) == 2
+    deep_model_used = FakeChatOpenAI.instances[0].model
+    quick_model_used = FakeChatOpenAI.instances[1].model
+    assert deep_model_used == "openai/gpt-4-turbo"
+    assert quick_model_used == "openai/gpt-4o-mini"
+    assert "Estimated OpenRouter cost" in caplog.text

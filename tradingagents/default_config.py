@@ -23,6 +23,18 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
         "api_key_env": "OPENROUTER_API_KEY",
         "base_url": os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
         "require_api_key": True,
+        "model_aliases": {
+            "gpt-4-turbo": "openai/gpt-4-turbo",
+            "gpt-4o-mini": "openai/gpt-4o-mini",
+            "claude-opus": "anthropic/claude-3-opus",
+            "llama2-70b": "meta-llama/llama-2-70b-chat",
+        },
+        "cost_estimates": {
+            "openai/gpt-4-turbo": {"prompt": 10.0, "completion": 30.0},
+            "openai/gpt-4o-mini": {"prompt": 1.5, "completion": 2.0},
+            "anthropic/claude-3-opus": {"prompt": 15.0, "completion": 75.0},
+            "meta-llama/llama-2-70b-chat": {"prompt": 0.5, "completion": 0.6},
+        },
     },
     "ollama": {
         "api_key_env": os.getenv("OLLAMA_API_KEY_ENV") or None,
