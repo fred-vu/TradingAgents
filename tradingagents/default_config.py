@@ -24,16 +24,103 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
         "base_url": os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
         "require_api_key": True,
         "model_aliases": {
-            "gpt-4-turbo": "openai/gpt-4-turbo",
+            "gpt-5-mini": "openai/gpt-5-mini",
             "gpt-4o-mini": "openai/gpt-4o-mini",
-            "claude-opus": "anthropic/claude-3-opus",
-            "llama2-70b": "meta-llama/llama-2-70b-chat",
+            "llama3-70b": "meta-llama/llama-3.3-70b-instruct",
+            "zAi-glm-4-5": "z-ai/glm-4.5-air:free",
+            "deepseek-r1": "deepseek/deepseek-chat-v3-0324:free",
+            "magistral-medium": "mistralai/magistral-medium-2506:thinking",
+            "mistral-small": "mistralai/mistral-small-3.2-24b-instruct:free",
+            "grok-4-fast": "x-ai/grok-4-fast",
+            "minimax-free": "minimax/minimax-m2:free",
         },
         "cost_estimates": {
-            "openai/gpt-4-turbo": {"prompt": 10.0, "completion": 30.0},
-            "openai/gpt-4o-mini": {"prompt": 1.5, "completion": 2.0},
-            "anthropic/claude-3-opus": {"prompt": 15.0, "completion": 75.0},
-            "meta-llama/llama-2-70b-chat": {"prompt": 0.5, "completion": 0.6},
+            "openai/gpt-5-mini": {"prompt": 0.25, "completion": 2.00},
+            "openai/gpt-4o-mini": {"prompt": 0.15, "completion": 0.60},
+            "meta-llama/llama-3.3-70b-instruct": {"prompt": 0.13, "completion": 0.38},
+            "z-ai/glm-4.5-air:free": {"prompt": 0.00, "completion": 0.00},
+            "mistralai/magistral-medium-2506:thinking": {
+                "prompt": 2.00,
+                "completion": 5.00,
+            },
+            "x-ai/grok-4-fast": {"prompt": 0.20, "completion": 0.50},
+            "minimax/minimax-m2:free": {"prompt": 0.00, "completion": 0.00},
+            "deepseek/deepseek-chat-v3-0324:free": {"prompt": 0.00, "completion": 0.00},
+            "mistralai/mistral-small-3.2-24b-instruct:free": {
+                "prompt": 0.00,
+                "completion": 0.00,
+            },
+        },
+        "capability_tiers": {
+            "finance_safe": ["gpt-5-mini", "gpt-4o-mini", "magistral-medium"],
+            "cost_saver": ["gpt-4o-mini", "magistral-medium"],
+            "research_heavy": ["llama3-70b", "grok-4-fast"],
+            "free_trial": [
+                "zAi-glm-4-5",
+                "minimax-free",
+                "deepseek-r1",
+                "mistral-small",
+            ],
+        },
+        "preferred_capabilities": {
+            "deep_think": "finance_safe",
+            "quick_think": "cost_saver",
+        },
+        "blocked_models": [],
+        "enable_free_models": True,
+        "max_calls_per_minute": int(
+            os.getenv("TRADINGAGENTS_OPENROUTER_MAX_CALLS", "20")
+        ),
+        ##selection mode for openrouter: cost_balanced, performance_first, balanced, or free_only
+        "selection_mode": os.getenv(
+            "TRADINGAGENTS_OPENROUTER_SELECTION_MODE", "balanced"
+        ),
+        "model_profiles": {
+            "openai/gpt-5-mini": {
+                "context": 200000,
+                "reliability": 0.9,
+                "cost_weight": 0.6,
+            },
+            "openai/gpt-4o-mini": {
+                "context": 128000,
+                "reliability": 0.95,
+                "cost_weight": 0.9,
+            },
+            "mistralai/magistral-medium-2506:thinking": {
+                "context": 32000,
+                "reliability": 0.7,
+                "cost_weight": 0.4,
+            },
+            "meta-llama/llama-3.3-70b-instruct": {
+                "context": 8192,
+                "reliability": 0.6,
+                "cost_weight": 0.3,
+            },
+            "x-ai/grok-4-fast": {
+                "context": 32768,
+                "reliability": 0.65,
+                "cost_weight": 0.35,
+            },
+            "z-ai/glm-4.5-air:free": {
+                "context": 32000,
+                "reliability": 0.7,
+                "cost_weight": 1.0,
+            },
+            "minimax/minimax-m2:free": {
+                "context": 20000,
+                "reliability": 0.7,
+                "cost_weight": 1.0,
+            },
+            "deepseek/deepseek-chat-v3-0324:free": {
+                "context": 24000,
+                "reliability": 0.5,
+                "cost_weight": 1.0,
+            },
+            "mistralai/mistral-small-3.2-24b-instruct:free": {
+                "context": 32000,
+                "reliability": 0.45,
+                "cost_weight": 1.0,
+            },
         },
     },
     "ollama": {
@@ -118,7 +205,9 @@ _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
         "get_fundamentals": int(os.getenv("TRADINGAGENTS_TTL_FUNDAMENTALS", "86400")),
         "get_balance_sheet": int(os.getenv("TRADINGAGENTS_TTL_BALANCE_SHEET", "86400")),
         "get_cashflow": int(os.getenv("TRADINGAGENTS_TTL_CASHFLOW", "86400")),
-        "get_income_statement": int(os.getenv("TRADINGAGENTS_TTL_INCOME_STATEMENT", "86400")),
+        "get_income_statement": int(
+            os.getenv("TRADINGAGENTS_TTL_INCOME_STATEMENT", "86400")
+        ),
         "get_indicators": int(os.getenv("TRADINGAGENTS_TTL_INDICATORS", "900")),
         "get_stock_data": int(os.getenv("TRADINGAGENTS_TTL_STOCK_DATA", "900")),
     },
@@ -134,8 +223,12 @@ _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
         "TRADINGAGENTS_VENDOR_PRIORITY_ORDER",
         "",
     ),
-    "vendor_circuit_breaker_threshold": int(os.getenv("TRADINGAGENTS_VENDOR_CB_THRESHOLD", "3")),
-    "vendor_circuit_breaker_cooldown": int(os.getenv("TRADINGAGENTS_VENDOR_CB_COOLDOWN", "300")),
+    "vendor_circuit_breaker_threshold": int(
+        os.getenv("TRADINGAGENTS_VENDOR_CB_THRESHOLD", "3")
+    ),
+    "vendor_circuit_breaker_cooldown": int(
+        os.getenv("TRADINGAGENTS_VENDOR_CB_COOLDOWN", "300")
+    ),
     # LLM settings
     "llm_provider": "openai",
     "deep_think_llm": "o4-mini",
@@ -153,10 +246,10 @@ _DEFAULT_CONFIG_TEMPLATE: Dict[str, Any] = {
     "audit_log_filename": "trade_audit.jsonl",
     # Data vendor configuration
     "data_vendors": {
-        "core_stock_apis": "yfinance",        # Options: yfinance, alpha_vantage, local
-        "technical_indicators": "yfinance",   # Options: yfinance, alpha_vantage, local
+        "core_stock_apis": "yfinance",  # Options: yfinance, alpha_vantage, local
+        "technical_indicators": "yfinance",  # Options: yfinance, alpha_vantage, local
         "fundamental_data": "alpha_vantage",  # Options: openai, alpha_vantage, local
-        "news_data": "alpha_vantage",         # Options: openai, alpha_vantage, google, local
+        "news_data": "alpha_vantage",  # Options: openai, alpha_vantage, google, local
     },
     "tool_vendors": {},
     "provider_config": deepcopy(_DEFAULT_PROVIDER_CONFIG),
