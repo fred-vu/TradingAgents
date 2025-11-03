@@ -183,16 +183,14 @@ def test_build_llms_openrouter_alias_mapping(monkeypatch, caplog):
     expected_free = {
         "z-ai/glm-4.5-air:free",
         "minimax/minimax-m2:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "mistralai/mistral-small-3.2-24b-instruct:free",
     }
 
     assert deep_models[0] == result.deep_llm.primary_model
     assert quick_models[0] == result.quick_llm.primary_model
     assert expected_core.issubset(deep_set)
     assert expected_core.issubset(quick_set)
-    assert expected_free & deep_set == expected_free
-    assert expected_free & quick_set == expected_free
+    assert expected_free.issubset(deep_set)
+    assert expected_free.issubset(quick_set)
     assert "Estimated OpenRouter cost" in caplog.text
 
 
@@ -280,20 +278,14 @@ def test_openrouter_free_only_mode(monkeypatch):
     assert result.deep_llm.primary_model in {
         "z-ai/glm-4.5-air:free",
         "minimax/minimax-m2:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "mistralai/mistral-small-3.2-24b-instruct:free",
     }
     assert result.quick_llm.primary_model in {
         "z-ai/glm-4.5-air:free",
         "minimax/minimax-m2:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "mistralai/mistral-small-3.2-24b-instruct:free",
     }
-    assert len(FakeChatOpenAI.instances) == 8
+    assert len(FakeChatOpenAI.instances) == 4
     models_used = {inst.model for inst in FakeChatOpenAI.instances}
     assert models_used == {
         "z-ai/glm-4.5-air:free",
         "minimax/minimax-m2:free",
-        "deepseek/deepseek-chat-v3-0324:free",
-        "mistralai/mistral-small-3.2-24b-instruct:free",
     }

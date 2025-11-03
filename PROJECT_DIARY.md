@@ -22,7 +22,7 @@
 - Completed LLM Phase 3 work: OpenRouter alias mapping with cost estimates, logging improvements, and regression coverage to ensure cheaper models can be selected dynamically.
 
 ## 2025-11-03
-- Refined OpenRouter free-only stack for CLI tests: removed Maverick/Gemini aliases, added GLM 4.5 Air, Minimax M2, DeepSeek v3, and Mistral Small free variants.
+- Refined OpenRouter free-only stack for CLI tests: removed Maverick/Gemini + later dropped DeepSeek/Mistral; GLM 4.5 Air và Minimax M2 là hai model free chính.
 - Added provider-level rate limiter (default 16 TPM, configurable via `TRADINGAGENTS_OPENROUTER_MAX_CALLS`) to prevent free-tier throttling during runs.
 - Updated `cli/utils.py` selections so both shallow/deep pickers list the new free models; ensures CLI choices map to actual aliases.
 - Introduced `Openrouter-Context.md` summarising alias mappings, scoring, and limiter behaviour for upcoming external audit.

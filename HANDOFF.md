@@ -24,7 +24,7 @@
 - Added circuit breaker and optional dependency handling for vendor fallbacks; updated tests to confirm retries and skipping behavior when primary providers fail.
 - Added Finnhub + NewsAPI integrations behind vendor availability checks; audit `.env.example` documents required API keys for live data.
 - Added OpenRouter alias/cost handling in the LLM factory so cheaper models can be selected with proper logging; regression coverage ensures alias mapping works as expected.
-- Refined OpenRouter free-only stack (GLM 4.5 Air, Minimax M2, DeepSeek v3, Mistral Small) and documented selection/rate-limit controls for CLI evaluation.
+- Refined OpenRouter free-only stack—hiện chỉ giữ GLM 4.5 Air và Minimax M2 để tránh rate-limit; documented selection/rate-limit controls for CLI evaluation.
 - Implemented provider-level rate limiter (`TRADINGAGENTS_OPENROUTER_MAX_CALLS`) to avoid free-tier throttling; CLI selectors now surface the new free aliases.
 - Authored `Openrouter-Context.md` summarising current configuration for external audit review.
 

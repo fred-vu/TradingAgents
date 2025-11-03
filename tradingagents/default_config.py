@@ -28,9 +28,7 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
             "gpt-4o-mini": "openai/gpt-4o-mini",
             "llama3-70b": "meta-llama/llama-3.3-70b-instruct",
             "zAi-glm-4-5": "z-ai/glm-4.5-air:free",
-            "deepseek-r1": "deepseek/deepseek-chat-v3-0324:free",
             "magistral-medium": "mistralai/magistral-medium-2506:thinking",
-            "mistral-small": "mistralai/mistral-small-3.2-24b-instruct:free",
             "grok-4-fast": "x-ai/grok-4-fast",
             "minimax-free": "minimax/minimax-m2:free",
         },
@@ -45,11 +43,6 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
             },
             "x-ai/grok-4-fast": {"prompt": 0.20, "completion": 0.50},
             "minimax/minimax-m2:free": {"prompt": 0.00, "completion": 0.00},
-            "deepseek/deepseek-chat-v3-0324:free": {"prompt": 0.00, "completion": 0.00},
-            "mistralai/mistral-small-3.2-24b-instruct:free": {
-                "prompt": 0.00,
-                "completion": 0.00,
-            },
         },
         "capability_tiers": {
             "finance_safe": ["gpt-5-mini", "gpt-4o-mini", "magistral-medium"],
@@ -58,8 +51,6 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
             "free_trial": [
                 "zAi-glm-4-5",
                 "minimax-free",
-                "deepseek-r1",
-                "mistral-small",
             ],
         },
         "preferred_capabilities": {
@@ -108,17 +99,7 @@ _DEFAULT_PROVIDER_CONFIG: Dict[str, Dict[str, Any]] = {
             },
             "minimax/minimax-m2:free": {
                 "context": 20000,
-                "reliability": 0.7,
-                "cost_weight": 1.0,
-            },
-            "deepseek/deepseek-chat-v3-0324:free": {
-                "context": 24000,
-                "reliability": 0.5,
-                "cost_weight": 1.0,
-            },
-            "mistralai/mistral-small-3.2-24b-instruct:free": {
-                "context": 32000,
-                "reliability": 0.45,
+                "reliability": 0.6,
                 "cost_weight": 1.0,
             },
         },

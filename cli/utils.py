@@ -177,14 +177,6 @@ def select_shallow_thinking_agent(provider) -> str:
                 "Minimax M2 (free) - Cost-effective general reasoning",
                 "minimax/minimax-m2:free",
             ),
-            (
-                "DeepSeek Chat v3 (free) - Multi-lingual reasoning",
-                "deepseek/deepseek-chat-v3-0324:free",
-            ),
-            (
-                "Mistral Small 3.2 24B Instruct (free) - Fast structured responses",
-                "mistralai/mistral-small-3.2-24b-instruct:free",
-            ),
         ],
         "ollama": [
             ("llama3.1 local", "llama3.1"),
@@ -276,14 +268,6 @@ def select_deep_thinking_agent(provider) -> str:
             (
                 "Minimax M2 (free) - Solid reasoning backup",
                 "minimax/minimax-m2:free",
-            ),
-            (
-                "DeepSeek Chat v3 (free) - Thoughtful multi-step reasoning",
-                "deepseek/deepseek-chat-v3-0324:free",
-            ),
-            (
-                "Mistral Small 3.2 24B Instruct (free) - Creative generation",
-                "mistralai/mistral-small-3.2-24b-instruct:free",
             ),
         ],
         "ollama": [
