@@ -103,14 +103,32 @@ cd TradingAgents
 
 Create a virtual environment in any of your favorite environment managers:
 ```bash
-conda create -n tradingagents python=3.13
-conda activate tradingagents
+python -m venv .venv
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+python -m pip install --upgrade pip
 ```
 
 Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+Optional extras:
+
+- Data providers (`akshare`, `tushare`, `praw`, `finnhub-python`, etc.):
+  ```bash
+  pip install -e ".[data-feeds]"
+  ```
+- Additional LLM providers (Anthropic, Google Generative AI) and experimental LangChain tooling:
+  ```bash
+  pip install -e ".[llm-providers]"
+  ```
+- Operational tooling (Chainlit demo UI, Grip, Redis):
+  ```bash
+  pip install -e ".[ops]"
+  ```
+
+You can mix extras, e.g. `pip install -e ".[data-feeds,llm-providers]"`.
 
 ### Required APIs
 
@@ -157,9 +175,19 @@ We now ship an experimental desktop experience that wraps the FastAPI backend an
 
 ### Prerequisites
 
-- Python 3.11+ with project dependencies installed:
+- Python 3.11+ with the `.venv` from the root directory activated:
   ```bash
+  source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
   pip install -e .
+  # Optional extras for the desktop experience:
+  # pip install -e ".[data-feeds,llm-providers,ops]"
+  ```
+  Set `TRADINGAGENTS_PYTHON` if Tauri should launch a specific interpreter during packaging (for example your `.venv` on Windows):
+  ```powershell
+  setx TRADINGAGENTS_PYTHON "$env:CD\.venv\Scripts\python.exe"
+  ```
+  ```bash
+  export TRADINGAGENTS_PYTHON="$PWD/.venv/bin/python"
   ```
 - Node.js 18+ and npm 9+
 - Rust toolchain via [`rustup`](https://rustup.rs)

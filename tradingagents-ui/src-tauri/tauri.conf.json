@@ -25,7 +25,7 @@
       "active": true,
       "identifier": "com.tradingagents.desktop",
       "targets": ["msi", "nsis"],
-      "resources": ["../run_backend.py"]
+      "resources": ["../../run_backend.py"]
     },
     "security": {
       "csp": null

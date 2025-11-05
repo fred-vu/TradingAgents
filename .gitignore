@@ -4,11 +4,17 @@ memory/
 logs/
 audit_logs/
 cache/
+node_modules/
+dist/
+target/
+.tradingagents/
 env/
 __pycache__/
 .DS_Store
 *.csv
 src/
+!tradingagents-ui/src/
+!tradingagents-ui/src-tauri/src/
 eval_results/
 eval_data/
 *.egg-info/
