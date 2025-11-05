@@ -1,0 +1,15 @@
+[package]
+name = "tradingagents-ui"
+version = "0.1.0"
+description = "TradingAgents desktop shell"
+authors = ["TradingAgents Team"]
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "1.5", features = ["api-all"] }
+tokio = { version = "1.37", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }

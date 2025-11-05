@@ -27,3 +27,9 @@
 - Updated `cli/utils.py` selections so both shallow/deep pickers list the new free models; ensures CLI choices map to actual aliases.
 - Introduced `Openrouter-Context.md` summarising alias mappings, scoring, and limiter behaviour for upcoming external audit.
 - Updated `.env.example` to document selection mode/limit env vars for operators enabling free-only mode.
+
+## 2025-11-05
+- Scaffolded FastAPI backend (`tradingagents/app`) with health/config/history endpoints, mock trading service, and persistence-ready config manager. Added regression suite `tests/app/test_backend.py`.
+- Added desktop frontend workspace `tradingagents-ui/` (Vue 3 + Tailwind) including dashboard, history, and settings views plus API/WebSocket clients and initial Vitest coverage for dashboard interactions.
+- Introduced Tauri wrapper (`tradingagents-ui/src-tauri`) that launches the Python backend on startup and packages `run_backend.py` for Windows builds.
+- Updated dependency manifests (`pyproject.toml`, `requirements.txt`, and `package.json`) to cover FastAPI, Vite/Tauri stacks; captured follow-up to install npm/pip deps before running tests locally.

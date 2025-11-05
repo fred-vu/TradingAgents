@@ -151,6 +151,62 @@ An interface will appear showing results as they load, letting you track the age
   <img src="assets/cli/cli_transaction.png" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
 
+## Desktop App Preview (Tauri + FastAPI + Vue)
+
+We now ship an experimental desktop experience that wraps the FastAPI backend and Vue dashboard inside a Tauri shell. The feature set will continue to evolve during the Windows portable build effort.
+
+### Prerequisites
+
+- Python 3.11+ with project dependencies installed:
+  ```bash
+  pip install -e .
+  ```
+- Node.js 18+ and npm 9+
+- Rust toolchain via [`rustup`](https://rustup.rs)
+- Tauri CLI (`cargo install tauri-cli` or `npm install -g @tauri-apps/cli`)
+
+### Backend
+
+```bash
+python run_backend.py --reload
+```
+
+This serves the FastAPI API on `http://127.0.0.1:8000/api` with mock trading results until LLM provider credentials are supplied.
+
+### Frontend
+
+```bash
+cd tradingagents-ui
+npm install
+npm run dev
+```
+
+The Vite dev server (http://127.0.0.1:5173) consumes the backend endpoints for analysis requests, history, metrics, and configuration management.
+
+### Desktop Shell
+
+```bash
+cd tradingagents-ui
+npm run tauri dev
+```
+
+Tauri spawns the Python backend automatically (configurable via `TRADINGAGENTS_BACKEND_SCRIPT`) and renders the Vue UI in a native window. To produce a Windows portable build:
+
+```bash
+cd tradingagents-ui
+npm run build
+npm run tauri build
+```
+
+Packages are emitted under `tradingagents-ui/src-tauri/target/release/bundle/`. Ensure the backend entry (`run_backend.py`) is present alongside the binary or adjust the environment variable to the packaged location.
+
+### Tests
+
+- Backend: `pytest tests/app/test_backend.py`
+- Frontend: `cd tradingagents-ui && npm run test`
+
+Install the new FastAPI/Tauri dependencies (`pip install -e .` and `npm install`) before executing the suites.
+
 ## TradingAgents Package
 
 ### Implementation Details
