@@ -10,11 +10,18 @@ import hashlib
 import json
 import logging
 import os
+import math
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from random import Random
+from typing import Dict, List, Optional
 
-from tradingagents.app.models.trade import AnalystResponse, TradeRecommendation
+from tradingagents.app.models.trade import (
+    AnalystResponse,
+    DebateTurn,
+    PricePoint,
+    TradeRecommendation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +182,9 @@ class TradingService:
             key = rec.timestamp.strftime("%Y-%m")
             monthly_totals[key] = monthly_totals.get(key, 0) + 1
 
+        equity_curve = self._build_equity_curve(history)
+        recommendation_distribution = self._build_recommendation_distribution(history)
+
         monthly_performance = [
             {"month": month, "signals": count}
             for month, count in sorted(monthly_totals.items())
@@ -186,6 +196,8 @@ class TradingService:
             "avg_confidence": max(0.0, min(1.0, avg_confidence)),
             "sharpe_ratio": None,
             "monthly_performance": monthly_performance,
+            "equity_curve": equity_curve,
+            "recommendation_distribution": recommendation_distribution,
         }
 
     async def shutdown(self) -> None:
@@ -205,10 +217,11 @@ class TradingService:
     ) -> TradeRecommendation:
         """Produce deterministic yet varied mock data for the UI."""
 
-        digest = hashlib.sha256(
+        seed = hashlib.sha256(
             f"{symbol}:{lookback_days}:{strategy}".encode("utf-8")
         ).hexdigest()
-        sample = int(digest[:8], 16) / 0xFFFFFFFF
+        sample = int(seed[:8], 16) / 0xFFFFFFFF
+        rng = Random(int(seed[:8], 16))
 
         confidence = 0.45 + (sample * 0.45)
         risk_score = max(0.05, 1.0 - confidence * 0.8)
@@ -232,12 +245,22 @@ class TradingService:
             for idx, (name, text) in enumerate(analyst_templates)
         ]
 
-        timestamp = datetime.now(UTC)
         debate_rounds = max(1, min(3, lookback_days // 15))
+        debate_history = self._build_debate_history(analysts, rng, debate_rounds)
+
+        timestamp = datetime.now(UTC)
+        price_series = self._build_price_series(rng, timestamp, lookback_days, recommendation)
+
         trader_notes = (
             f"Mock {strategy} strategy evaluation for {symbol}. "
             f"Confidence at {confidence:.2%}, risk score {risk_score:.2f}."
         )
+
+        key_insights = [
+            f"Primary signal leans {recommendation} with confidence {confidence:.0%}.",
+            "Liquidity conditions stable; volatility within acceptable range.",
+            "Monitor macro catalysts impacting sector performance.",
+        ]
 
         return TradeRecommendation(
             symbol=symbol,
@@ -248,6 +271,10 @@ class TradingService:
             debate_rounds=debate_rounds,
             trader_notes=trader_notes,
             timestamp=timestamp,
+            price_series=price_series,
+            debate_history=debate_history,
+            key_insights=key_insights,
+            strategy=strategy,
         )
 
     async def _run_real_analysis(
@@ -322,3 +349,79 @@ class TradingService:
 
         config = copy_default_config()
         return TradingAgentsGraph(debug=False, config=config)
+
+    # ------------------------------------------------------------------
+    # Generators for mock mode
+    # ------------------------------------------------------------------
+
+    def _build_price_series(
+        self,
+        rng: Random,
+        end_time: datetime,
+        lookback_days: int,
+        recommendation: str,
+    ) -> List[PricePoint]:
+        window = max(15, min(lookback_days, 90))
+        base_price = 100 + rng.random() * 80
+        amplitude = 4 + rng.random() * 6
+        bias = {"BUY": 1.03, "SELL": 0.97, "HOLD": 1.0}.get(recommendation, 1.0)
+
+        points: List[PricePoint] = []
+        for idx in range(window):
+            ts = end_time - timedelta(days=window - idx)
+            variation = math.sin(idx / 4) * amplitude + rng.uniform(-1.5, 1.5)
+            price = max(5.0, base_price * bias + variation)
+            label = ts.strftime("%b %d") if idx % 5 == 0 else None
+            points.append(PricePoint(timestamp=ts, value=round(price, 2), label=label))
+        return points
+
+    def _build_debate_history(
+        self,
+        analysts: List[AnalystResponse],
+        rng: Random,
+        debate_rounds: int,
+    ) -> List[DebateTurn]:
+        turns: List[DebateTurn] = []
+        stances = ["support", "challenge", "risk"]
+        for round_idx in range(1, debate_rounds + 1):
+            for analyst in analysts:
+                turns.append(
+                    DebateTurn(
+                        round=round_idx,
+                        speaker=analyst.name,
+                        stance=rng.choice(stances),
+                        summary=f"{analyst.name} reiterates {analyst.signal.lower()} stance with new datapoints.",
+                        confidence=analyst.confidence,
+                    )
+                )
+        return turns
+
+    @staticmethod
+    def _build_recommendation_distribution(history: List[TradeRecommendation]) -> Dict[str, int]:
+        distribution: Dict[str, int] = {"BUY": 0, "HOLD": 0, "SELL": 0}
+        for rec in history:
+            recommendation = rec.recommendation.upper()
+            distribution.setdefault(recommendation, 0)
+            distribution[recommendation] += 1
+        return distribution
+
+    @staticmethod
+    def _build_equity_curve(history: List[TradeRecommendation]) -> List[PricePoint]:
+        sorted_history = sorted(history, key=lambda rec: rec.timestamp)
+        value = 100.0
+        curve: List[PricePoint] = []
+        for rec in sorted_history:
+            if rec.recommendation == "BUY":
+                value *= 1.02
+            elif rec.recommendation == "SELL":
+                value *= 0.99
+            else:
+                value *= 1.0
+            curve.append(
+                PricePoint(
+                    timestamp=rec.timestamp,
+                    value=round(value, 2),
+                    label=rec.symbol,
+                )
+            )
+        return curve

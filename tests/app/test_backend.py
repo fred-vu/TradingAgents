@@ -45,6 +45,11 @@ def test_analyze_valid_request(client: TestClient) -> None:
     assert data["recommendation"] in {"BUY", "HOLD", "SELL"}
     assert 0.0 <= data["confidence"] <= 1.0
     assert len(data["analysts"]) >= 1
+    assert isinstance(data["price_series"], list)
+    if data["price_series"]:
+        assert data["price_series"][0]["value"] > 0
+    assert isinstance(data["debate_history"], list)
+    assert isinstance(data["key_insights"], list)
 
 
 def test_analyze_invalid_symbol(client: TestClient) -> None:
@@ -97,6 +102,9 @@ def test_metrics_history_flow(client: TestClient) -> None:
     assert 0.0 <= metrics["avg_confidence"] <= 1.0
     assert "monthly_performance" in metrics
     assert isinstance(metrics["monthly_performance"], list)
+    assert "equity_curve" in metrics and isinstance(metrics["equity_curve"], list)
+    assert "recommendation_distribution" in metrics
+    assert sum(metrics["recommendation_distribution"].values()) >= 1
 
 
 def test_export_history(client: TestClient) -> None:
@@ -106,3 +114,13 @@ def test_export_history(client: TestClient) -> None:
     assert response.status_code == 200
     assert payload["format"] == "json"
     assert exported_path.exists()
+
+
+def test_export_history_download(client: TestClient) -> None:
+    response = client.get(
+        "/api/export/download",
+        params={"format": "csv", "days": 30},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert "attachment" in response.headers.get("content-disposition", "")

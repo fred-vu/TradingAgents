@@ -8,12 +8,14 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Optional, Set
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from starlette.websockets import WebSocketDisconnect
 
 from tradingagents.app.models.trade import (
@@ -184,6 +186,26 @@ async def export_history(
     except Exception as exc:  # pragma: no cover - defensive path
         logger.error("History export failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Export failed.") from exc
+
+
+@app.get("/api/export/download")
+async def export_history_download(
+    symbol: Optional[str] = Query(default=None),
+    format: str = Query(default="csv", pattern="^(csv|json)$"),
+    days: int = Query(default=90, ge=1, le=365),
+) -> FileResponse:
+    try:
+        file_path = await trading_service.export_history(
+            symbol=symbol, format=format, days=days
+        )
+        media_type = "text/csv" if format == "csv" else "application/json"
+        filename = Path(file_path).name
+        return FileResponse(path=file_path, media_type=media_type, filename=filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive path
+        logger.error("History export download failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Export download failed.") from exc
 
 
 @app.get("/api/config", response_model=ConfigResponse)

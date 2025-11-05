@@ -58,6 +58,24 @@ class AnalystResponse(BaseModel):
     reasoning: str = Field(..., description="Rationale supporting the signal.")
 
 
+class DebateTurn(BaseModel):
+    """Aggregated debate turn for UI visualisation."""
+
+    round: int = Field(..., ge=1)
+    speaker: str
+    stance: str
+    summary: str
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+
+
+class PricePoint(BaseModel):
+    """Price/indicator point used by the dashboard chart."""
+
+    timestamp: datetime
+    value: float
+    label: Optional[str] = None
+
+
 class TradeRecommendation(BaseModel):
     """Aggregated trading recommendation exposed to clients."""
 
@@ -69,6 +87,10 @@ class TradeRecommendation(BaseModel):
     debate_rounds: int = Field(..., ge=0)
     trader_notes: str
     timestamp: datetime
+    price_series: List[PricePoint] = Field(default_factory=list)
+    debate_history: List[DebateTurn] = Field(default_factory=list)
+    key_insights: List[str] = Field(default_factory=list)
+    strategy: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -98,3 +120,5 @@ class MetricsResponse(BaseModel):
     avg_confidence: float = Field(..., ge=0.0, le=1.0)
     sharpe_ratio: Optional[float] = Field(None)
     monthly_performance: List[Dict[str, Any]] = Field(default_factory=list)
+    equity_curve: List[PricePoint] = Field(default_factory=list)
+    recommendation_distribution: Dict[str, int] = Field(default_factory=dict)

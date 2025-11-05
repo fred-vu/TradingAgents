@@ -183,6 +183,12 @@ npm run dev
 
 The Vite dev server (http://127.0.0.1:5173) consumes the backend endpoints for analysis requests, history, metrics, and configuration management.
 
+Current dashboard highlights:
+- Interactive price-action and equity curve charts powered by Chart.js
+- Debate transcript modal with analyst-by-round summaries and key insights callouts
+- Configurable filters for history plus one-click JSON/CSV exports delivered from the backend
+- Client-side validation on symbol inputs and strategy controls for better UX
+
 ### Desktop Shell
 
 ```bash

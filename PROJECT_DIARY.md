@@ -33,3 +33,8 @@
 - Added desktop frontend workspace `tradingagents-ui/` (Vue 3 + Tailwind) including dashboard, history, and settings views plus API/WebSocket clients and initial Vitest coverage for dashboard interactions.
 - Introduced Tauri wrapper (`tradingagents-ui/src-tauri`) that launches the Python backend on startup and packages `run_backend.py` for Windows builds.
 - Updated dependency manifests (`pyproject.toml`, `requirements.txt`, and `package.json`) to cover FastAPI, Vite/Tauri stacks; captured follow-up to install npm/pip deps before running tests locally.
+
+## 2025-11-06
+- Phase 2 dashboard uplift: backend now emits price-series, debate transcripts, and richer metrics (equity curve + distribution) with new tests covering the payloads (`tests/app/test_backend.py`).
+- Vue dashboard integrates Chart.js price/equity visualisations, validation, key insights cards, and a debate transcript modal; updated Vitest suite with component mocks for chart rendering.
+- History export now streams files via `/api/export/download`; frontend triggers JSON/CSV downloads directly with blob handling while retaining filtered views.

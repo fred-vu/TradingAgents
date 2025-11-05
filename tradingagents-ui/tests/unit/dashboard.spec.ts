@@ -14,6 +14,21 @@ const mockRecommendation: TradeRecommendation = {
   debateRounds: 2,
   traderNotes: 'Mock notes',
   timestamp: new Date().toISOString(),
+  priceSeries: [
+    { timestamp: new Date().toISOString(), value: 150 },
+    { timestamp: new Date().toISOString(), value: 152 },
+  ],
+  debateHistory: [
+    {
+      round: 1,
+      speaker: 'market_analyst',
+      stance: 'support',
+      summary: 'Mock summary',
+      confidence: 0.8,
+    },
+  ],
+  keyInsights: ['Mock insight'],
+  strategy: 'balanced',
 }
 
 const mockMetrics: MetricsSummary = {
@@ -22,6 +37,11 @@ const mockMetrics: MetricsSummary = {
   avgConfidence: 0.65,
   sharpeRatio: null,
   monthlyPerformance: [{ month: '2025-01', signals: 4 }],
+  equityCurve: [
+    { timestamp: new Date().toISOString(), value: 100 },
+    { timestamp: new Date().toISOString(), value: 102 },
+  ],
+  recommendationDistribution: { BUY: 3, HOLD: 1, SELL: 1 },
 }
 
 vi.mock('@/services/api', () => ({
@@ -29,12 +49,19 @@ vi.mock('@/services/api', () => ({
   getMetrics: vi.fn(async () => mockMetrics),
 }))
 
+vi.mock('vue-chartjs', () => ({
+  Line: {
+    name: 'LineStub',
+    render: () => null,
+  },
+}))
+
 describe('Dashboard.vue', () => {
   it('renders initial form defaults', () => {
     const wrapper = mount(Dashboard, { props: { refreshToken: 0 } })
     const symbolInput = wrapper.find('input')
     expect(symbolInput.element.value).toBe('AAPL')
-    expect(wrapper.html()).toContain('balanced')
+    expect(wrapper.html()).toContain('Balanced')
     expect(wrapper.text()).toContain('Lookback')
   })
 
@@ -45,5 +72,6 @@ describe('Dashboard.vue', () => {
     expect(wrapper.emitted('analysis-started')).toBeTruthy()
     expect(wrapper.emitted('analysis-complete')).toBeTruthy()
     expect(wrapper.text()).toContain('Mock reasoning')
+    expect(wrapper.text()).toContain('Mock insight')
   })
 })
